@@ -1,17 +1,34 @@
 
-## API design rules
+# API design rules
 
 These rules should be applied when adding to the API.
-They exist to provide a consid
+They exist to provide a consistent API that adheres to the 
+[design principles](./DesignPrinciples.md).
 
-The overall design of the API must adhere to the desing principles.
-Here is one possible design
+## Opaque, linear references
 
-### Return structs
+The C-API will refer to Python objects through opaque references
+which must have exactly one owner. This design has been shown to
+be efficient, robust and portable by the HPy project, where the
+references are known as "handles".
+As each reference has exactly one owner, there will be no 
+incrementing or decrementing of reference counts. References can
+be duplicated with
+```C
+PyRef PyRef_Dup(PyRef ref);
+```
+and destroyed by
+```C
+void PyRef_Clear(PyRef ref);
+```
+
+Type specific variants will be provided for subtypes like `PyListRef`.
+
+## Return structs
 
 Many functions return a result, but may also raise an exception.
-To handle thsi API functions should return a `struct` containing both
-the error code and result or exception.
+To handle this, all API functions that can return a value should
+return a `struct` containing both the error code and result or exception.
 
 ```C
 typedef struct _py_returnval {
@@ -53,7 +70,7 @@ The following use, although incorrect, will not corrupt the VM or memory:
     PyRef result = PyAPi_Dict_Get(self, k).value;
 ```
 
-### Naming
+## Naming
 
 All API function and struct names should adhere to simple rules.
 For example, function names should take the form:
@@ -63,12 +80,12 @@ E.g.
 PyResult PyApi_Tuple_FromArray(uintptr_t len, PyRef *array);
 ```
 
-### Use standard C99 types, not custom ones.
+## Use standard C99 types, not custom ones.
 
 In other words, use `intptr_t` not `Py_ssize_t`.
 
 
-### Consumption of argument references
+## Consumption of argument references
 
 For effficiency, there is a natural consumption of references in some API
 functions. For example, appending an item to a list naturally consumes the
@@ -81,7 +98,7 @@ Consequently we want the low-level API/ABI function to be:
 int PyApi_List_Append_BC(PyListRef list, PyRef item);
 ```
 
-All ABI functionsshoudl get a higher level API function without a suffix.
+All ABI functions should get a higher level API function without a suffix.
 All non-suffix functions borrow the references to all their arguments.
 
 ```C
@@ -99,27 +116,7 @@ Note that this doesn't impact the portability of the API as the borrow
 or consume forms can be mechanically create from the other.
 
 
-### Opaque, linear references
-
-The C-API will refer to Python objects through opaque references
-which must have exactly one owner. This design has been shown to
-be efficient, robust and portable by the HPy project, where the
-references are known as "handles".
-As each reference has exactly one owner, there will be no 
-incrementing or decrementing of reference counts. References can
-be duplicated with
-```C
-PyRef PyRef_Dup(PyRef ref);
-```
-and destroyed by
-```C
-void PyRef_Clear(PyRef ref);
-```
-
-Type specific variants will be provided for subtypes like `PyListRef`.
-
-
-### ABI functions should be efficient, API functions easy to use
+## ABI functions should be efficient, API functions easy to use
 
 There is a tension between ease of use and performance.
 For example, it is the common case when creating a tuple that 
@@ -160,7 +157,7 @@ PyRef args[4] = {
 PyTupleResult new_tuple = PyApi_Tuple_FromFixedArray(args);
 ```
 
-### The API should include versions of functions that take result types.
+## The API should include versions of functions that take result types.
 
 For most* API functions, at least those that take one or two `PyRef` arguments,
 there should be a version that takes a `PyResult` as the first argument.
@@ -168,6 +165,8 @@ there should be a version that takes a `PyResult` as the first argument.
 This function gets an `M` suffix.
 
 This allows chaining of calls without being overwhelmed by error handling.
+To support this chaining any `M` arguments consume the reference in the
+`PyResult` value.
 
 Suppose we want to write a function that returns the name of the class of
 the argument.
@@ -179,6 +178,7 @@ PyStrResult pop_and_pair(PyRef o)
     return Py_Type_GetName_M(PyApi_Object_GetType(o));
 }
 ```
+This correctly handles both errors and references.
 
 The implementation is straightforward and can be automatically generated:
 ```
@@ -187,10 +187,61 @@ inline PyResult Py_Type_GetName_M(PyResult r)
     if (r.kind < 0) {
         return r;
     }
-    return Py_Type_GetName(r.value);
+    return Py_Type_GetName_C(r.value);
 }
 ```
 
 For the technically minded, this pattern is known as the "error monad".
 
 *Probably all, as we automatically generate these.
+
+## Return and take specific types where possible
+
+To reduce the number of dynamic type errors, we should make the API
+as type-specific as we can reasonably do.
+For example instead of specifying `PyApi_Function_GetCode()`
+as
+```C
+PyResult PyApi_Function_GetCode(PyRef f)
+```
+we should specify it as
+```C
+PyCodeResult PyApi_Function_GetCode(PyFunctionRef f);
+```
+
+This may force us to add some extra casts to support the `M` form,
+but should keep code cleaner overall.
+
+## Provide a safe and easy to use set of casts
+
+If we want to use specific types, we need casts.
+
+### Upcasts
+
+Upcasts are always safe, so don't need any error handling.
+Downcasts will generally take the form `PyApi_Upcast_TypeName`
+e.g.
+```C
+PyRef PyApi_Upcast_List(PyListRef l);
+```
+
+The `M` form will also be included:
+```C
+PyResult PyApi_Upcast_List_M(PyListResult l);
+```
+
+### Downcasts
+
+Downcasts may fail so must handle errors.
+e.g.
+```C
+PyListResult PyApi_Downcast_List(PyRef obj);
+```
+
+The `M` form will also be included:
+```C
+PyListResult PyApi_Downcast_List_M(PyResult l);
+```
+
+
+
