@@ -5,7 +5,7 @@ it will contain no implementation, but will serve a repository
 of design principles, rules and organization.
 As well as maintaining a record of the discussions involved.
 
-# Design principles
+## Design principles
 
 The new C-API will follow a dozen or so [design principles](./DesignPrinciples.md).
 These are the high-level concepts that determine the nature of the API.
