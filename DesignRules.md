@@ -133,29 +133,12 @@ and the easier to use API function
 PyResult PyApi_Tuple_FromArray(uintptr_tlen, PyRef *array);
 ```
 
-But we can do better, as the API can include macros, we can implement
+However, we can make this even easier to use by making a macro that 
+takes an array directly.
 ```C
 PyTupleResult PyApi_Tuple_FromFixedArray(array);
 ```
-something like this:
-```
-#define PyResult PyApi_Tuple_FromFixedArray(array) \
-    ((sizeof(array) == 0) ? \
-        PyApi_NewRefEmptyTuple() \
-    : \
-        PyApi_Tuple_FromNonEmptyArray(sizeof(array)/sizeof(PyRef), &array)
-    )
-```
-Allowing it be used like this:
-```
-PyRef args[4] = {
-    PyNone,
-    arg1,
-    arg2,
-    PyNone
-};
-PyTupleResult new_tuple = PyApi_Tuple_FromFixedArray(args);
-```
+See the [examples](./examples.md) for the implementation.
 
 ## The API should include versions of functions that take result types.
 
