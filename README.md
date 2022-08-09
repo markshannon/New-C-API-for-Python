@@ -14,10 +14,8 @@ These are the high-level concepts that determine the nature of the API.
 
 It would be laborious and error prone to consider and apply the design principles
 each time a new function were added to the API.
-
 To enable developers to follow the design principles when extending the API,
 there are a number of [design rules](./DesignRules.md) for them to follow.
-
 The intention is that by following the rules, the design principles should be observed.
 Some judgement will still be required, though.
 
@@ -34,7 +32,7 @@ the API to contain many hundreds, maybe a thousand functions.
 The API should be organized in categories, reflected in the namespaces of the API.
 We want to break the API into namepsaces, and to be discoverable.
 
-We anticipate that many core objects will get there own namespace, for example:
+We anticipate that many core objects will get their own namespace, for example:
 
 * Object
 * Tuple
@@ -42,7 +40,7 @@ We anticipate that many core objects will get there own namespace, for example:
 * Str
 * Bytes
 
-Also various aspects of the runtime should also get there own namespace:
+Also various aspects of the runtime should also get their own namespace:
 
 * Interpreter
 * GC
