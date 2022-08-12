@@ -5,7 +5,7 @@ That is a lot to change.
 
 However, we don't need to change all the code that uses `PyObject *` to `PyRef` overnight.
 In fact until we change the implementation of `PyRef` to tagged pointers, or similar, we
-don't need to change anything at all.
+don't need to change much at all.
 
 Starting with the simplest representation of `PyRef` as
 ```
@@ -33,3 +33,4 @@ Adding two inline functions should help as well.
 PyRef TO_REF(PyObject *);
 PyObject *TO_PTR(PyRef ref);
 ```
+
