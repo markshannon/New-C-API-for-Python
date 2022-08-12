@@ -35,11 +35,11 @@ the C-API
 ## Completeness
 
 The C-API should be complete. There should be no need to access VM internals.
-This means that the C-API need to cover all language features, and most of the VM functionality.
+This means that the C-API needs to cover all Python features, and most of the VM functionality.
 
 ## No privileged users
 
-The standard library will only use the same API as third-party code.
+The standard library will use the same API as third-party code, without exception.
 This helps to ensure completeness and encourages implementers to make the API efficient.
 
 ## Consistency
@@ -56,30 +56,29 @@ impact on performance.
 
 ## API and ABI equivalence
 
-Any code written using the C-API will conform to the ABI.
-This a forwards-compatibility guarantee only.
-E.g., code written using the C-API for 3.15 will work unmodified
-on 3.16, but the opposite is not true.
+All code written to the API will continue to work on future versions of Python.
+The API may include inline functions and macros, but those must call into the ABI
+at some level.
 
-This doesn't mean that all API functions are part of the ABI, but that they must call down to the ABI,
-and that once in the ABI, they must remain there.
+The API is defined by the header file ``PyAPI.h``.
 
 ## API stability
 
-Once added to the C-API, a feature will be removed only if there is a very strong reason (read security)
-issue to do so.
+Once added to the API, a feature will be removed only if there is a very
+strong reason to do so.
+
 The semantics and interface of a function or struct will never change.
 It will either remain unchanged, or be removed, and possibly replaced.
-   
-## The API should be portable and future proof
+
+## The API should be portable across Python implementations and future proof
 
 The current design of CPython is constrained by the C-API.
 We want to provide a faster Python for all users, and the C-API
-should not prevent that. The HPy project shows that this can be done efficinetly.
+should not prevent that. The HPy project shows that this can be done efficiently.
 
 ## The API should be pure C.
 
 That means no `#ifdef __cplusplus` or similar constructs.
 We do this, not because we don't want people to use C++, but because
-we want them to be able to use Rust, Nim, or whatever other low-level 
+we want them to be able to use Rust, or whatever other low-level 
 language they want. A C API offers a common basis for all languages.

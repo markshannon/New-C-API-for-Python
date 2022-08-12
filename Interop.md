@@ -6,8 +6,7 @@ The interopability API consists of functions for converting
 ## Converting `PyObject *` to `PyRef` and `PyResult`
 
 In general converting a `PyObject *` to a `PyRef` is unsafe as it loses
-information about exceptions and might be safe.
-Both forms consume a reference to the object.
+information about exceptions.
 
 ```C
 PyRef PyApi_Interop_FromObjectUnsafe_C(PyObject *obj);

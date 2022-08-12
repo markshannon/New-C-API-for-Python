@@ -140,3 +140,20 @@ PyRef args[4] = {
 };
 PyTupleResult new_tuple = PyApi_Tuple_FromFixedArray(args);
 ```
+
+
+### Downcast macros
+
+The check and downcast macros can be defined as follows:
+```
+#define PyApi_List_CheckAndDowncast(OBJ, LIST) \
+    (PyRef_IsList(OBJ) ? (LIST = PyApi_List_UnsafeCast(OBJ), 1) : 0)
+```
+
+The double use of `OBJ` is undesirable, but is hard to avoid.
+
+
+```
+#define PyApi_List_CheckAndDowncast_M(OBJ, LIST) \
+    (PyRef_IsList_M(OBJ) ? (LIST = PyApi_List_UnsafeCast_M(OBJ), 1) : 0)
+```
