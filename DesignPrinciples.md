@@ -21,6 +21,7 @@ Likewise, inputs must be type-safe.
 ## Minimize the chance of the user supplying invalid input.
 
 This requires judgement, and depends on the use case. Nevertheless it is an important principle.
+For example, by making `PyRef` a struct, it cannot be simply cast to a `PyTupleRef`.
 
 ## Make it difficult for users to ignore error conditions
 

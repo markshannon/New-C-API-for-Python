@@ -86,7 +86,7 @@ This is very much provisional at this point.
 The removal of the legacy C API will happen in three stages:
 
 * 2025 (3.14): Removal of the unsafe parts of the API: parts of the API that return borrowed references, or mutate immutable objects.
-* 2028 (3.17): Removal performance limiting parts of the API. For example, parts of the API that prevent improvements to internal data structures.
+* 2028 (3.17): Removal of performance limiting parts of the API. For example, parts of the API that prevent improvements to internal data structures.
 * 2031 (3.20/4.0): Removal of the rest of the legacy C API.
 
 
