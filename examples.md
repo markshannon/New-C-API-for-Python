@@ -12,13 +12,18 @@ uintptr_t PyApi_Tuple_GetLength(PyTupleRef t);
 
 And here is an implementation for CPython (most versions up to 3.11)
 ```C
+typedef struct _py_tuple_ref {
+    PyTupleObject *pointer;
+} PyTupleRef;
+
 uintptr_t 
 PyApi_Tuple_GetLength(PyTupleRef t)
 {
-    return 
+    return (uintptr_t)Py_SIZE(t.pointer);
 }
 
 ```
+
 ### A computed getter function
 
 This function gets the name of a class object
@@ -98,7 +103,7 @@ For the ABI function
 int PyApi_Tuple_SetItem_BnC(PyTupleRef t, uintptr_t index, PyRef item);
 ```
 
-We can construct the API function that borrows the reference easily:
+We can construct the API function that borrows the reference simply:
 ```
 inline int
 PyApi_Tuple_SetItem(PyTupleRef t, uintptr_t index, PyRef item)
@@ -144,16 +149,9 @@ PyTupleResult new_tuple = PyApi_Tuple_FromFixedArray(args);
 
 ### Downcast macros
 
-The check and downcast macros can be defined as follows:
+Here is a possible implementation of a downcast macro:
 ```
 #define PyApi_List_CheckAndDowncast(OBJ, LIST) \
     (PyRef_IsList(OBJ) ? (LIST = PyApi_List_UnsafeCast(OBJ), 1) : 0)
 ```
 
-The double use of `OBJ` is undesirable, but is hard to avoid.
-
-
-```
-#define PyApi_List_CheckAndDowncast_M(OBJ, LIST) \
-    (PyRef_IsList_M(OBJ) ? (LIST = PyApi_List_UnsafeCast_M(OBJ), 1) : 0)
-```

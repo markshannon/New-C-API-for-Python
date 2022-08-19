@@ -225,7 +225,7 @@ PyRef PyApi_List_Upcast(PyListRef l);
 
 Downcasts are tricky, because we can't return a more type specific ``Result`` type.
 Either the ``Result`` is unsafe, due to potential errors, or it is useless as
-the result of the cast is as general as its input.
+the result of the cast, being as general as its input.
 
 Consequently the API contains macros to wrap the test then unsafe cast idiom.
 
@@ -262,6 +262,14 @@ void do_something_with_maybe_list(PyRef ref)
 }
 ```
 
+### Organizing the API to ensure ABI compatibility.
+
+* The API will be defined by `PyAPI.h`.
+* `PyABI.h` will define the ABI.
+* `PyAPI.h` will not contain any `extern` declarations.
+* `PyAPI.h` may have macros and inline functions.
+* All `extern` declarations must be in `PyABI.h`.
+
 ### No ABI mode
 
 There is a tension between performance and portability. The performance impact of using portable 
@@ -282,3 +290,12 @@ across different versions, or different implementations.
 For example, many of the class checks and casts can implemented in a few instructions as an inline function
 or macro, but such an implementation ties a build of code using it to a single Python implementation.
 
+Internally, the `PyAPI.h` would contain something like:
+```C
+#ifdef  PYAPI_NO_ABI
+#include "PyApi_unstable.h"
+#else
+#include "PyApi_portable.h"
+#endif
+#include "PyApi_ABI_common.h"
+```

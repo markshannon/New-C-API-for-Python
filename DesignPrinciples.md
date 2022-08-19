@@ -44,8 +44,8 @@ This helps to ensure completeness and encourages implementers to make the API ef
 
 ## Consistency
 
-The API should be consistent in naming, and usage. It should be possible to know
-what an API function does from its name and argument. At least, once familiar with the API.
+The API should be consistent in naming, and usage. It should be possible to infer
+what an API function does from its name and argument.
 
 ## Minimum of implicit state
 
@@ -56,11 +56,9 @@ impact on performance.
 
 ## API and ABI equivalence
 
-All code written to the API will continue to work on future versions of Python.
-The API may include inline functions and macros, but those must call into the ABI
-at some level.
-
-The API is defined by the header file ``PyAPI.h``.
+All code written to the API will continue to work on future versions of Python
+without recompilation. Recompilation using newer versions may be more efficient,
+but code compiled to older versions of the API will continue to work.
 
 ## API stability
 
@@ -68,7 +66,7 @@ Once added to the API, a feature will be removed only if there is a very
 strong reason to do so.
 
 The semantics and interface of a function or struct will never change.
-It will either remain unchanged, or be removed, and possibly replaced.
+It will either remain unchanged or be removed, and possibly replaced.
 
 ## The API should be portable across Python implementations and future proof
 

@@ -7,12 +7,16 @@ it will also serve as a record of the discussions involved.
 
 ## Why do we need a new C API?
 
-The current C API has evolved over decades, in an unplanned way.
+The current C API has expanded over decades, in an unplanned way.
+Pieces get added without consideration of future maintainence,
+and in a way that exposes implementation details.
+
 This makes it hard to use, restrictive of how it can be implemented,
 and in many cases unsafe.
 
-There are proposals for improving the existing C API, but changing
-the API will cause breakage and backwards incompatibility issues.
+We cannot incrementally change the current API, as each change
+will cause breakage and backwards incompatibility issues, leaving
+extension modules constantly broken.
 
 Rather than change the existing C API is it better to create an entirely new API,
 and deprecate the old one. This allows extension authors to switch to the new API
@@ -53,12 +57,12 @@ We anticipate that many core objects will get their own namespace, for example:
 * Str
 * Bytes
 
-Also various aspects of the runtime should also get their own namespace:
+Various aspects of the runtime should also get their own namespace:
 
 * Interpreter
 * GC
 * FrameStack
-* Operations
+* Operations (numerical, logical, etc.)
 
 ## Interoperation with the legacy API
 
@@ -69,33 +73,36 @@ To help porting we will provide an [interopability API](./Interop.md)
 
 This is very much provisional at this point.
 
-2023. 3.12: New C API specification complete. Deprecation of unsafe parts of legacy C API.
-2024. 3.13: New C API implementation in CPython complete. 
-2025. 3.14: Removal of unsafe parts of legacy C API. Deprecation of legacy C API.
-2026. 3.15: Add warnings of parts of legacy C API with negative impact on performance.
-2027. 3.16: Add warnings on any use of legacy C API
-2028. 3.17: Remove parts of legacy C API with negative impact on performance.
-2029. 3.18
-2030. 3.19
-2031. 3.20/4.0: Removal of legacy C API
+* 2023 (3.12): New C API specification complete. Deprecation of unsafe parts of legacy C API.
+* 2024 (3.13): New C API implementation in CPython complete. 
+* 2025 (3.14): Removal of unsafe parts of legacy C API. Deprecation of legacy C API.
+* 2026 (3.15): Add warnings of parts of legacy C API with negative impact on performance.
+* 2027 (3.16): Add warnings on any use of legacy C API
+* 2028 (3.17): Remove parts of legacy C API with negative impact on performance.
+* 2029 (3.18)
+* 2030 (3.19)
+* 2031 (3.20/4.0): Removal of legacy C API
 
 The removal of the legacy C API will happen in three stages:
 
-2025. Removal of the unsafe parts of the API: parts of the API that return borrowed references, or mutate immutable objects.
-2028. Removal performance limiting parts of the API. For example, parts of the API that prevent improvements to internal data structures.
-2031. Removal of the rest of the legacy C API.
+* 2025 (3.14): Removal of the unsafe parts of the API: parts of the API that return borrowed references, or mutate immutable objects.
+* 2028 (3.17): Removal performance limiting parts of the API. For example, parts of the API that prevent improvements to internal data structures.
+* 2031 (3.20/4.0): Removal of the rest of the legacy C API.
 
 
 ## Documentation
 
 ### API documentation
 
-The documentation will follow the [Diataxis documentation framework](https://diataxis.fr/)
+Each function and struct will be fully documented.
+
+If it isn't documented it isn't part of the API.
+If it is part of the API it will be documented.
 
 ### Porting documentation
 
-For each function, and struct in the legacy API, we will add documentation describing how code
-using it should be ported to the new API.
+For functions and structs in the legacy API, we will add documentation describing how code
+should be ported to the new API.
 
 ## Examples
 
