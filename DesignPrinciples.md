@@ -50,10 +50,9 @@ what an API function does from its name and argument.
 
 ## Minimum of implicit state
 
-Some implicit state is necessary, but most should be explicit.
-This can easily conflict with efficiency. For example, passing the interpreter
-to each API function would minimize state, but is likely to have a negative 
-impact on performance.
+Some implicit state is necessary, but most, if not all, should be explicit.
+Passing state explicitly allows control over which extension defined functions
+have access to what state, improving robustness.
 
 ## API and ABI equivalence
 
