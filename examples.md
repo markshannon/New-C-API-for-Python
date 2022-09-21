@@ -28,7 +28,7 @@ PyApi_Tuple_GetLength(PyTupleRef t)
 
 This function gets the name of a class object
 ```C
-PyResult PyApi_Class_GetName(PyClassRef cls);
+int PyApi_Class_GetName(PyClassRef cls, PyStrRef *result);
 ```
 
 And here is an implementation for CPython (most versions up to 3.11)
@@ -37,11 +37,11 @@ typedef struct _py_class_ref {
     PyTypeObject *pointer;
 } PyClassRef;
 
-PyResult
-PyApi_Class_GetName(PyClassRef cls)
+int
+PyApi_Class_GetName(PyClassRef cls, PyStrRef *result)
 {
     PyObject *name = PyUnicode_FromString(cls.pointer->tp_name);
-    return PyApi_Interop_FromObject_C(name);
+    return PyApi_Interop_FromUnicodeObject_C(name, result);
 }
 ```
 
@@ -49,22 +49,19 @@ PyApi_Class_GetName(PyClassRef cls)
 
 This function unboxes an integer, with possible overflow.
 ```C
-typedef struct _py_int_result {
-    int kind;
-    intptr_t value;
-} PyIntResult;
 
-PyIntResult PyApi_Number_UnboxAsInt(PyIntRef i)
+int PyApi_Number_UnboxAsInt(PyIntRef i, intptr_t *value)
 {
     PyObject *obj = i.pointer;
     assert (PyLong_check(obj));
 
     if (PyLong_WillOverflowSsize_t(obj)) {
-        return (PyIntResult) { OVERFLOW, _PyLong_Sign(obj) };
+        *value = _PyLong_Sign(obj);
+        return OVERFLOW;
     }
     else {
-        uintptr_t val = PyLong_AsSsize_t(obj);
-        return (PyIntResult) { SUCCESS, val };
+        *value = PyLong_AsSsize_t(obj);
+        return SUCCESS;
     }
 }
 ```
@@ -74,20 +71,30 @@ PyIntResult PyApi_Number_UnboxAsInt(PyIntRef i)
 This function gets a value from a dictionary
 
 ```C
-PyResultWithFailure PyApi_Dict_GetItem(PyDictRef d, PyRef key)
+
+typedef enum _py_lookup_kind {
+    ERROR = -1,
+    FOUND = 0,
+    MISSING = 1,
+} PyLookupKind;
+
+PyLookupKind PyApi_Dict_GetItem(PyDictRef d, PyRef key, PyRef *result)
 {
     PyObject *dp = d.pointer;
     PyObject *kp = key.pointer;
     PyObject *res = _PyDict_GetItemWithError(PyObject *dp, PyObject *kp);
     if (res != NULL) {
         assert(!Py_ErrOccurred());
-        return (PyResultWithFailure) { SUCCESS, res};
+        ref->pointer = res;
+        return SUCCESS;
     }
     if (Py_ErrOccurred()) {
         PyObject *exception = get_normalized_exception();
-        return (PyResultWithFailure) { ERROR, exception};
+        ref->pointer = exception;
+        return ERROR;
     }
-    return (PyResultWithFailure) { FAILURE, PyIgnorableRef() };
+    *result = PyIgnorableRef();
+    return MISSING;
 }
 ```
 
@@ -120,19 +127,19 @@ want to wrap them in a friendlier API that handles edge cases.
 
 For example,
 ```
-PyResult PyApi_Tuple_FromNonEmptyArray_nC(uintptr_t len, PyRef *values);
+int PyApi_Tuple_FromNonEmptyArray_nC(uintptr_t len, PyRef *values, PyRef *result);
 ```
 can be wrapped in a macro to give the nicer API:
 ```
-PyResult PyApi_Tuple_FromFixedArray(array)
+int PyApi_Tuple_FromFixedArray(array, result)
 ```
 
 ```
-#define PyApi_Tuple_FromFixedArray(array) \
+#define PyApi_Tuple_FromFixedArray(array, result) \
     ((sizeof(array) == 0) ? \
-        (PyResult) { SUCCESS, PyApi_Tuple_Empty() } \
+        (*result = PyApi_Tuple_Empty(), SUCCESS) \
     : \
-        PyApi_Tuple_FromNonEmptyArray(sizeof(array)/sizeof(PyRef), &array)
+        PyApi_Tuple_FromNonEmptyArray(sizeof(array)/sizeof(PyRef), &array, result)
     )
 ```
 Allowing it be used like this:
@@ -143,7 +150,8 @@ PyRef args[4] = {
     arg2,
     PyNone
 };
-PyTupleResult new_tuple = PyApi_Tuple_FromFixedArray(args);
+PyTupleRef new_tuple;
+int err = PyApi_Tuple_FromFixedArray(args, &new_tuple);
 ```
 
 
