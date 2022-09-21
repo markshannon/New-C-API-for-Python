@@ -4,7 +4,8 @@
 
 ### A simple getter function
 
-This function gets the length of a tuple
+This function gets the length of a tuple.
+Very simple getters that return a C scalar do not need a `PyContext` parameter.
 
 ```C
 uintptr_t PyApi_Tuple_GetLength(PyTupleRef t);
@@ -28,7 +29,7 @@ PyApi_Tuple_GetLength(PyTupleRef t)
 
 This function gets the name of a class object
 ```C
-int PyApi_Class_GetName(PyClassRef cls, PyStrRef *result);
+int PyApi_Class_GetName(PyContext ctx, PyClassRef cls, PyStrRef *result);
 ```
 
 And here is an implementation for CPython (most versions up to 3.11)
@@ -38,7 +39,7 @@ typedef struct _py_class_ref {
 } PyClassRef;
 
 int
-PyApi_Class_GetName(PyClassRef cls, PyStrRef *result)
+PyApi_Class_GetName(PyContext ctx, PyClassRef cls, PyStrRef *result)
 {
     PyObject *name = PyUnicode_FromString(cls.pointer->tp_name);
     return PyApi_Interop_FromUnicodeObject_C(name, result);
@@ -78,7 +79,7 @@ typedef enum _py_lookup_kind {
     MISSING = 1,
 } PyLookupKind;
 
-PyLookupKind PyApi_Dict_GetItem(PyDictRef d, PyRef key, PyRef *result)
+PyLookupKind PyApi_Dict_GetItem(PyContext ctx, PyDictRef d, PyRef key, PyRef *result)
 {
     PyObject *dp = d.pointer;
     PyObject *kp = key.pointer;
@@ -93,7 +94,7 @@ PyLookupKind PyApi_Dict_GetItem(PyDictRef d, PyRef key, PyRef *result)
         ref->pointer = exception;
         return ERROR;
     }
-    *result = PyIgnorableRef();
+    *result = PyIgnorableRef(ctx);
     return MISSING;
 }
 ```
@@ -107,16 +108,16 @@ but will not invalid the state of the VM if it is used a normal reference.
 
 For the ABI function
 ```
-int PyApi_Tuple_SetItem_BnC(PyTupleRef t, uintptr_t index, PyRef item);
+int PyApi_Tuple_SetItem_BnC(PyContext ctx, PyTupleRef t, uintptr_t index, PyRef item);
 ```
 
 We can construct the API function that borrows the reference simply:
 ```
 inline int
-PyApi_Tuple_SetItem(PyTupleRef t, uintptr_t index, PyRef item)
+PyApi_Tuple_SetItem(PyContext ctx, PyTupleRef t, uintptr_t index, PyRef item)
 {
-    PyRef arg2 = PyRef_Dup(item);
-    return PyApi_Tuple_SetItem_BnC(t, index, arg2)
+    PyRef arg2 = PyRef_Dup(ctx, item);
+    return PyApi_Tuple_SetItem_BnC(ctx, t, index, arg2)
 }
 ```
 
@@ -127,19 +128,19 @@ want to wrap them in a friendlier API that handles edge cases.
 
 For example,
 ```
-int PyApi_Tuple_FromNonEmptyArray_nC(uintptr_t len, PyRef *values, PyRef *result);
+int PyApi_Tuple_FromNonEmptyArray_nC(PyContext ctx, uintptr_t len, PyRef *values, PyRef *result);
 ```
 can be wrapped in a macro to give the nicer API:
 ```
-int PyApi_Tuple_FromFixedArray(array, result)
+int PyApi_Tuple_FromFixedArray(ctx, array, result)
 ```
 
 ```
-#define PyApi_Tuple_FromFixedArray(array, result) \
+#define PyApi_Tuple_FromFixedArray(ctx, array, result) \
     ((sizeof(array) == 0) ? \
-        (*result = PyApi_Tuple_Empty(), SUCCESS) \
+        (*result = PyApi_Tuple_Empty(ctx), SUCCESS) \
     : \
-        PyApi_Tuple_FromNonEmptyArray(sizeof(array)/sizeof(PyRef), &array, result)
+        PyApi_Tuple_FromNonEmptyArray(ctx, sizeof(array)/sizeof(PyRef), &array, result)
     )
 ```
 Allowing it be used like this:
@@ -151,7 +152,7 @@ PyRef args[4] = {
     PyNone
 };
 PyTupleRef new_tuple;
-int err = PyApi_Tuple_FromFixedArray(args, &new_tuple);
+int err = PyApi_Tuple_FromFixedArray(ctx, args, &new_tuple);
 ```
 
 

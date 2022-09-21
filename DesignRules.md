@@ -5,6 +5,23 @@ These rules should be applied when adding to the API.
 They exist to provide a consistent API that adheres to the 
 [design principles](./DesignPrinciples.md).
 
+## All functions to take an opaque context
+
+Passing a `context` parameter to API functions forces extension
+code to operate on the correct context, and prevents them from
+performing operations that are not safe from the given context.
+
+`PyContext` is the full context passed to most extension functions
+are expected by most API functions.
+
+There are also more limited contexts that get passed to some
+extension functions and allow only a more limited interaction
+with the virtual machine.
+
+For example `PyMemContext` is passed to destructor functions
+which prevents them from doing much more than freeing `PyRef`s
+and memory.
+
 ## Opaque, linear references
 
 The C-API will refer to Python objects through opaque references
@@ -15,11 +32,12 @@ As each reference has exactly one owner, there will be no
 incrementing or decrementing of reference counts. References can
 be duplicated with
 ```C
-PyRef PyRef_Dup(PyRef ref);
+PyRef PyRef_Dup(PyContext ctx, PyRef ref);
 ```
 and destroyed by
 ```C
-void PyRef_Free(PyRef ref);
+void PyRef_Close(PyContext ctx, PyRef ref);
+void PyRef_Free(PyMemContext mctx, PyRef ref);
 ```
 
 Type specific variants will be provided for subtypes like `PyListRef`.
@@ -55,7 +73,7 @@ typedef enum _py_lookup_kind {
     MISSING = 1,
 } PyLookupKind;
 
-PyLookupKind PyAPi_Dict_Get(PyDictRef dict, PyRef key, PyRef *value);
+PyLookupKind PyAPi_Dict_Get(PyContext ctx, PyDictRef dict, PyRef key, PyRef *value);
 ```
 
 Even in the case of `MISSING`, `value` should be set to a valid value to
@@ -63,7 +81,7 @@ minimize the chance of crashes should `value` be used.
 The following use, although incorrect, will not corrupt the VM or memory:
 ```C
     PyRef value;
-    PyAPi_Dict_Get(self, k, &value);
+    PyApi_Dict_Get(ctx, self, k, &value);
     return value;
 ```
 
@@ -74,7 +92,7 @@ For example, function names should take the form:
 Prefix_NameSpace_Operation[_REF_CONSUMPTION]
 E.g.
 ```C
-int PyApi_Tuple_FromArray(uintptr_t len, PyRef *array, PyRef *result);
+int PyApi_Tuple_FromArray(PyContext ctx, uintptr_t len, PyRef *array, PyRef *result);
 ```
 
 ## Use standard C99 types, not custom ones.
@@ -99,14 +117,14 @@ We denote borrowed references by `B` and consumed references by `C`.
 Consequently we want the low-level API/ABI function to be:
 
 ```C
-int PyApi_List_Append_BC(PyListRef list, PyRef item);
+int PyApi_List_Append_BC(PyContext ctx, PyListRef list, PyRef item);
 ```
 
 All ABI functions should get a higher level API function without a suffix.
 All non-suffix functions borrow the references to all their arguments.
 
 ```C
-int PyApi_List_Append(PyListRef list, PyRef item);
+int PyApi_List_Append(PyContext ctx, PyListRef list, PyRef item);
 ```
 is equivalent to `PyApi_List_Append_BB`.
 
@@ -130,17 +148,17 @@ differently, returning the empty tuple singleton.
 We handle this tension by providing an efficient, but difficult use
 ABI function:
 ```C
-int PyApi_Tuple_FromNonEmptyArray_nC(uintptr_tlen, PyRef *array, PyRef *result);
+int PyApi_Tuple_FromNonEmptyArray_nC(PyContext ctx, uintptr_tlen, PyRef *array, PyRef *result);
 ```
 and the easier to use API function
 ```C
-int PyApi_Tuple_FromArray(uintptr_tlen, PyRef *array, PyRef *result);
+int PyApi_Tuple_FromArray(PyContext ctx, uintptr_tlen, PyRef *array, PyRef *result);
 ```
 
 However, we can make this even easier to use by making a macro that 
 takes an array directly.
 ```C
-int PyApi_Tuple_FromFixedArray(array, result);
+int PyApi_Tuple_FromFixedArray(ctx, array, result);
 ```
 See the [examples](./examples.md) for the implementation.
 
@@ -151,11 +169,11 @@ as type-specific as we can reasonably do.
 For example instead of specifying `PyApi_Function_GetCode()`
 as
 ```C
-PyRef PyApi_Function_GetCode(PyRef f)
+PyRef PyApi_Function_GetCode(PyContext ctx, PyRef f)
 ```
 we should specify it as
 ```C
-PyCodeRef PyApi_Function_GetCode(PyFunctionRef f);
+PyCodeRef PyApi_Function_GetCode(PyContext ctx, PyFunctionRef f);
 ```
 
 This may force us to add some extra casts to support the `M` form,
@@ -204,13 +222,13 @@ PyApi_List_CheckAndDowncast(OBJ, LIST)
 
 Which would be used as follows:
 ```
-extern void do_something_with_list(PyListRef l);
+extern void do_something_with_list(PyContext ctx, PyListRef l);
 
-void do_something_with_maybe_list(PyRef ref)
+void do_something_with_maybe_list(PyContext ctx, PyRef ref)
 {
     PyListRef l;
     if (PyApi_List_CheckAndDowncast(ref, l)) {
-        do_something_with_list(l);
+        do_something_with_list(ctx, l);
     }
 }
 ```
