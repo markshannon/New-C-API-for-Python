@@ -12,7 +12,7 @@ code to operate on the correct context, and prevents them from
 performing operations that are not safe from the given context.
 
 `PyContext` is the full context passed to most extension functions
-are expected by most API functions.
+and that is expected by most API functions.
 
 There are also more limited contexts that get passed to some
 extension functions and allow only a more limited interaction
