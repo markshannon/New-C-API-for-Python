@@ -30,21 +30,15 @@ The is a consequence of the "No invalid states" design principle.
 The legacy API allows inplace mutation of tuples, strings and other 
 immutable object. These will not be allowed in the new API.
 
-## Return structs
+## Return error codes and set the result value through a pointer
 
 Many functions return a result, but may also raise an exception.
 To handle this, all API functions that can return a value should
-return a `struct` containing both the error code and result or exception.
+return a result `kind`, and return the result `value` through a pointer.
 
-```C
-typedef struct _py_returnval {
-    int kind;
-    PyRef value;
-} PyResult;
-```
+The result pointer should always be the final parameter.
 
-Different functions may return variations on the above, but the `kind`
-must obey the following rules:
+The `kind` must obey the following rules:
 
 A value of zero is always a success, and `value` must be the result.
 A negative value is always an error, and `value` must be the exception raised.
@@ -61,19 +55,16 @@ typedef enum _py_lookup_kind {
     MISSING = 1,
 } PyLookupKind;
 
-typedef struct _py_lookup {
-    PyLookupKind kind;
-    PyRef value;
-} PyLookupResult;
-
-PyLookupResult PyAPi_Dict_Get(PyDictRef dict, PyRef key);
+PyLookupKind PyAPi_Dict_Get(PyDictRef dict, PyRef key, PyRef *value);
 ```
 
 Even in the case of `MISSING`, `value` should be set to a valid value to
 minimize the chance of crashes should `value` be used.
 The following use, although incorrect, will not corrupt the VM or memory:
 ```C
-    PyRef result = PyAPi_Dict_Get(self, k).value;
+    PyRef value;
+    PyAPi_Dict_Get(self, k, &value);
+    return value;
 ```
 
 ## Naming
@@ -83,7 +74,7 @@ For example, function names should take the form:
 Prefix_NameSpace_Operation[_REF_CONSUMPTION]
 E.g.
 ```C
-PyResult PyApi_Tuple_FromArray(uintptr_t len, PyRef *array);
+int PyApi_Tuple_FromArray(uintptr_t len, PyRef *array, PyRef *result);
 ```
 
 ## Use standard C99 types, not custom ones.
@@ -139,57 +130,19 @@ differently, returning the empty tuple singleton.
 We handle this tension by providing an efficient, but difficult use
 ABI function:
 ```C
-PyResult PyApi_Tuple_FromNonEmptyArray_nC(uintptr_tlen, PyRef *array);
+int PyApi_Tuple_FromNonEmptyArray_nC(uintptr_tlen, PyRef *array, PyRef *result);
 ```
 and the easier to use API function
 ```C
-PyResult PyApi_Tuple_FromArray(uintptr_tlen, PyRef *array);
+int PyApi_Tuple_FromArray(uintptr_tlen, PyRef *array, PyRef *result);
 ```
 
 However, we can make this even easier to use by making a macro that 
 takes an array directly.
 ```C
-PyTupleResult PyApi_Tuple_FromFixedArray(array);
+int PyApi_Tuple_FromFixedArray(array, result);
 ```
 See the [examples](./examples.md) for the implementation.
-
-## The API should include versions of functions that take result types.
-
-For most* API functions, at least those that take one or two `PyRef` arguments,
-there should be a version that takes a `PyResult` as the first argument.
-
-This function gets an `M` suffix.
-
-This allows chaining of calls without being overwhelmed by error handling.
-To support this chaining any `M` arguments consume the reference in the
-`PyResult` value.
-
-Suppose we want to write a function that returns the name of the class of
-the argument.
-
-Using the `M` forms we can implement this as:
-```C
-PyStrResult get_typename(PyRef o)
-{
-    return Py_Type_GetName_M(PyApi_Object_GetType(o));
-}
-```
-This correctly handles both errors and references.
-
-The implementation of the `M` formas is straightforward and can be automatically generated:
-```
-inline PyResult Py_Type_GetName_M(PyResult r) 
-{
-    if (r.kind < 0) {
-        return r;
-    }
-    return Py_Type_GetName_C(r.value);
-}
-```
-
-For the technically minded, this pattern is known as the "error monad".
-
-*Probably all, as we automatically generate these.
 
 ## Return and take specific types where possible
 
@@ -223,8 +176,8 @@ PyRef PyApi_List_Upcast(PyListRef l);
 
 ### Downcasts
 
-Downcasts are tricky, because we can't return a more type specific ``Result`` type.
-Either the ``Result`` is unsafe, due to potential errors, or it is useless as
+Downcasts are tricky, because we can't return a more type specific ``PyRef`` type.
+Either the ``PyRef`` is unsafe, due to potential errors, or it is useless as
 the result of the cast, being as general as its input.
 
 Consequently the API contains macros to wrap the test then unsafe cast idiom.
@@ -290,12 +243,12 @@ across different versions, or different implementations.
 For example, many of the class checks and casts can implemented in a few instructions as an inline function
 or macro, but such an implementation ties a build of code using it to a single Python implementation.
 
-Internally, the `PyAPI.h` would contain something like:
+Internally, the `PyABI.h` would conceptually be something like:
 ```C
 #ifdef  PYAPI_NO_ABI
 #include "PyApi_unstable.h"
 #else
-#include "PyApi_portable.h"
+#include "PyAbi_portable.h"
 #endif
-#include "PyApi_ABI_common.h"
+#include "PyAbi_common.h"
 ```
