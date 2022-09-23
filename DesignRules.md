@@ -95,10 +95,24 @@ E.g.
 int PyApi_Tuple_FromArray(PyContext ctx, uintptr_t len, PyRef *array, PyRef *result);
 ```
 
-## Use standard C99 types, not custom ones.
+## Use C99 <stdint.h> types
+
+### Use C99 integers types, not custom ones
 
 In other words, use `intptr_t` not `Py_ssize_t`.
 This helps portability, and wrapping for other languages.
+
+### Use C99 integers types, not legacy ones
+
+Use `int32_t` or `intptr_t` not `int` or `long`.
+`long` should never be used, as it differs in size even on the same hardware.
+`int` is acceptable only as a return `kind`.
+If the return value can represent a value, then a `<stdint.h>` type should be used.
+
+E.g.
+* `int PyApi_Tuple_FromArray(uintptr_t len, PyRef *array, PyRef *result)` is OK.
+* But, `int PyApi_Tuple_GetSize(PyTupleRef *ref)` is not OK as it returns a value, not just a `kind`.
+* It should be `uintptr_t PyApi_Tuple_GetSize(PyTupleRef *ref)`
 
 ## No variable length argument lists.
 
@@ -176,9 +190,6 @@ we should specify it as
 PyCodeRef PyApi_Function_GetCode(PyContext ctx, PyFunctionRef f);
 ```
 
-This may force us to add some extra casts to support the `M` form,
-but should keep code cleaner overall.
-
 ## Provide a safe and easy to use set of casts
 
 If we want to use specific types, we need casts.
@@ -197,6 +208,9 @@ PyRef PyApi_List_Upcast(PyListRef l);
 Downcasts are tricky, because we can't return a more type specific ``PyRef`` type.
 Either the ``PyRef`` is unsafe, due to potential errors, or it is useless as
 the result of the cast, being as general as its input.
+
+* `PyListRef PyApi_List_DownCast(PyRef obj)`: unsafe
+* `PyRef PyApi_List_DownCast(PyRef obj)`: useless
 
 Consequently the API contains macros to wrap the test then unsafe cast idiom.
 
