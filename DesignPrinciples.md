@@ -56,7 +56,8 @@ have access to what state, improving robustness.
 
 ## API and ABI equivalence
 
-All code written to the API will continue to work on future versions of Python
+Provided that the extension is built in ABI compatible mode, then all code
+written to the API will continue to work on future versions of Python
 without recompilation. Recompilation using newer versions may be more efficient,
 but code compiled to older versions of the API will continue to work.
 
