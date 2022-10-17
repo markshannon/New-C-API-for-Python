@@ -1,7 +1,8 @@
 # Interoperability API
 
 The interopability API consists of functions for converting
-`PyObject *` to `PyRef`, and vice versa
+`PyObject *` to `PyRef`, and vice versa.
+These functions are for internal use, so do not take a `PyContext`.
 
 ## Converting `PyObject *` to `PyRef`
 
@@ -42,9 +43,8 @@ PyRef PyApi_Interop_FromObjectUnsafe_C(PyObject *obj)
     return (PyRef) { obj };
 }
 
-int PyApi_Interop_FromObject_C(PyObject *obj, PyRef *result)
+PyRef PyApi_Interop_FromObject_C(PyObject *obj, PyExceptionRef *exc)
 {
-    int kind;
     if (PyErr_Occurred()) {
         PyObject *exception = get_normalized_exception();
         if (object != NULL) {
@@ -56,12 +56,10 @@ int PyApi_Interop_FromObject_C(PyObject *obj, PyRef *result)
             PyException_SetCause(new_exception, exception);
             Py_DECREF(exception);
             Py_DECREF(obj);
-            obj = new_exception;
+            exception = new_exception;
         }
-        else {
-            obj = exception;
-        }
-        kind = ERROR;
+        *exc = PyApi_Interop_FromException(exception);
+        return PyRef_INVALID;
     }
     else {
         if (obj == NULL) {
@@ -70,16 +68,11 @@ int PyApi_Interop_FromObject_C(PyObject *obj, PyRef *result)
                 PyExc_SystemError,
                 "value is NULL without setting an exception"
             );
-            obj = exception;
-            kind = ERROR;
-        }
-        else {
-            *result = obj;
-            kind = SUCCESS;
+            *exc = PyApi_Interop_FromException(exception);
+            return PyRef_INVALID;
         }
     }
-    *result = PyApi_Interop_FromObjectUnsafe(obj);
-    return kind;
+    return PyApi_Interop_FromObjectUnsafe(obj);
 }
 ```
 
