@@ -48,42 +48,41 @@ The is a consequence of the "No invalid states" design principle.
 The legacy API allows inplace mutation of tuples, strings and other 
 immutable object. These will not be allowed in the new API.
 
-## Return error codes and set the result value through a pointer
+## All functions have an error "out" parameter, or return the error
+
+### Functions that have results
 
 Many functions return a result, but may also raise an exception.
-To handle this, all API functions that can return a value should
-return a result `kind`, and return the result `value` through a pointer.
+To handle this, all such API functions should have an `error` out
+parameter, of the form `PyExceptionRef *error`.
 
-The result pointer should always be the final parameter.
+The error pointer should always be the final parameter.
 
-The `kind` must obey the following rules:
+API functions must obey the following rules:
 
-A value of zero is always a success, and `value` must be the result.
-A negative value is always an error, and `value` must be the exception raised.
+* If no valid result can be returned, the the result value should be `PyRef_INVALID`.
+* If the result is valid, then the memory pointer to by `error` should be untouched.
 
-Positive values can either be failures or additional success codes.
-No function may return both failures and additional success codes.
+Some functions can fail without an error. Failure should be represented by returning
+`PyRef_INVALID` and `*error = PyRef_NO_EXCEPTION`.
 
 For example, to get a value from a dictionary might have the following API:
 
 ```C
-typedef enum _py_lookup_kind {
-    ERROR = -1,
-    FOUND = 0,
-    MISSING = 1,
-} PyLookupKind;
-
-PyLookupKind PyAPi_Dict_Get(PyContext ctx, PyDictRef dict, PyRef key, PyRef *value);
+PyRef PyAPi_Dict_Get(PyContext ctx, PyDictRef dict, PyRef key, PyExceptionRef *value);
 ```
 
-Even in the case of `MISSING`, `value` should be set to a valid value to
-minimize the chance of crashes should `value` be used.
-The following use, although incorrect, will not corrupt the VM or memory:
+If the result is `PyRef_INVALID` then the failure and error cases can be differentiated
+by testing `*error == PyRef_NO_EXCEPTION`.
+
+### Functions without results
+
+Some functions, e.g. `PyApi_List_Append()` do not produce a result, but can raise.
+Those functions should return a `PyExceptionRef`.
 ```C
-    PyRef value;
-    PyApi_Dict_Get(ctx, self, k, &value);
-    return value;
+PyExceptionRef PyApi_List_Append(PyContext ctx, PyListRef list, PyRef item);
 ```
+Success is indicated by returning `PyRef_NO_EXCEPTION`.
 
 ## Naming
 
@@ -92,7 +91,7 @@ For example, function names should take the form:
 Prefix_NameSpace_Operation[_REF_CONSUMPTION]
 E.g.
 ```C
-int PyApi_Tuple_FromArray(PyContext ctx, uintptr_t len, PyRef *array, PyRef *result);
+PyTupleRef PyApi_Tuple_FromArray(PyContext ctx, uintptr_t len, PyRef *array, PyExceptionRef *error);
 ```
 
 ## Use C99 <stdint.h> types
@@ -104,14 +103,13 @@ This helps portability, and wrapping for other languages.
 
 ### Use C99 integers types, not legacy ones
 
-Use `int32_t` or `intptr_t` not `int` or `long`.
-`long` should never be used, as it differs in size even on the same hardware.
-`int` is acceptable only as a return `kind`.
+Use `int32_t`, `intptr_t`, etc. Never use `long` as it differs in size even on the same hardware.
+The use of `int` is sometimes acceptable, when it is used as an enumeration, or small range.
 If the return value can represent a value, then a `<stdint.h>` type should be used.
 
 E.g.
-* `int PyApi_Tuple_FromArray(uintptr_t len, PyRef *array, PyRef *result)` is OK.
-* But, `int PyApi_Tuple_GetSize(PyTupleRef *ref)` is not OK as it returns a value, not just a `kind`.
+* `int PyApi_Byte_GetItem(PyRef *array, intptr_t index, PyExceptionRef *error)` is OK.
+* But `int PyApi_Tuple_GetSize(PyTupleRef *ref)` is not OK as it might overflow.
 * It should be `uintptr_t PyApi_Tuple_GetSize(PyTupleRef *ref)`
 
 ## No variable length argument lists.
@@ -131,14 +129,14 @@ We denote borrowed references by `B` and consumed references by `C`.
 Consequently we want the low-level API/ABI function to be:
 
 ```C
-int PyApi_List_Append_BC(PyContext ctx, PyListRef list, PyRef item);
+PyExceptionRef PyApi_List_Append_BC(PyContext ctx, PyListRef list, PyRef item);
 ```
 
 All ABI functions should get a higher level API function without a suffix.
 All non-suffix functions borrow the references to all their arguments.
 
 ```C
-int PyApi_List_Append(PyContext ctx, PyListRef list, PyRef item);
+PyExceptionRef PyApi_List_Append(PyContext ctx, PyListRef list, PyRef item);
 ```
 is equivalent to `PyApi_List_Append_BB`.
 
@@ -162,17 +160,17 @@ differently, returning the empty tuple singleton.
 We handle this tension by providing an efficient, but difficult use
 ABI function:
 ```C
-int PyApi_Tuple_FromNonEmptyArray_nC(PyContext ctx, uintptr_tlen, PyRef *array, PyRef *result);
+PyTupleRef PyApi_Tuple_FromNonEmptyArray_nC(PyContext ctx, uintptr_tlen, PyRef *array, PyExceptionRef *error);
 ```
 and the easier to use API function
 ```C
-int PyApi_Tuple_FromArray(PyContext ctx, uintptr_tlen, PyRef *array, PyRef *result);
+PyTupleRef PyApi_Tuple_FromArray(PyContext ctx, uintptr_t len, PyRef *array, PyExceptionRef *error);
 ```
 
 However, we can make this even easier to use by making a macro that 
 takes an array directly.
 ```C
-int PyApi_Tuple_FromFixedArray(ctx, array, result);
+PyTupleRef PyApi_Tuple_FromFixedArray(ctx, array, error);
 ```
 See the [examples](./examples.md) for the implementation.
 
@@ -183,12 +181,13 @@ as type-specific as we can reasonably do.
 For example instead of specifying `PyApi_Function_GetCode()`
 as
 ```C
-PyRef PyApi_Function_GetCode(PyContext ctx, PyRef f)
+PyRef PyApi_Function_GetCode(PyContext ctx, PyRef f, PyExceptionRef *error)
 ```
 we should specify it as
 ```C
 PyCodeRef PyApi_Function_GetCode(PyContext ctx, PyFunctionRef f);
 ```
+which doesn't need an `error` parameter as it cannot fail.
 
 ## Provide a safe and easy to use set of casts
 

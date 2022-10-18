@@ -45,13 +45,6 @@ def function_pointer(func):
 def is_function_pointer(func):
     return hasattr(func, "_function_pointer")
 
-def no_monadic(func):
-    func._no_monadic = True
-    return func
-
-def allows_monadic(func):
-    return not hasattr(func, "_no_monadic")
-
 def no_result(func):
     ret_type = func.__annotations__.get("return", None)
     return ret_type is Void
@@ -62,8 +55,7 @@ def shared(func):
 
 exports = (
     intptr_t, uintptr_t, uint8_t, int32_t, uint32_t, int64_t, uint64_t,
-    abi, namespace, Self, Void, no_fail, function_pointer, no_monadic,
-    shared
+    abi, namespace, Self, Void, no_fail, function_pointer, shared
 )
 
 

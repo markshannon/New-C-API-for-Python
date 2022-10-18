@@ -219,25 +219,20 @@ class Operators:
 
 class Exception:
 
-    @no_monadic
     def FromString(cls: Class, message: utf_string) -> Self: ...
 
-    @no_monadic
     def FromValue(cls: Class, message) -> Self: ...
 
     @no_fail
     def Fatal(message: utf_string) -> Void: ...
 
-    @no_monadic
     def FromErrnoWithFilename(cls: Class, filename: utf_string) -> Self: ...
 
-    @no_monadic
     def RaiseFromString(cls: Class, message: utf_string) -> Self:
         """Always fails. Returns, barring another error,
         { PyRef PyRef_INVALID, new_exception }
         """
 
-    @no_monadic
     def RaiseFromValue(cls: Class, message) -> Self:
         """Always fails. Returns, barring another error,
         { PyRef PyRef_INVALID, new_exception }
@@ -255,15 +250,19 @@ class Call:
 @namespace
 class Iter:
 
-    def Next(obj):
-        """If no more results are available, then
-           { PyRef PyRef_INVALID, PyRef_NO_EXCEPTION} is returned.
-        """
+    def Next(obj): ...
 
-    def Send(obj):
-        """If Send returns, instead of yielding then
-           { returned_object_ref, PyApi_StopIteration() } is returned.
-        """
+    def NextX(obj):
+        """If no more results are available then, instead of raising StopIteration,
+*error = PyRef_NO_EXCEPTION.
+This is more efficient than the plain Next function."""
+
+    def Send(obj): ...
+
+    def SendX(obj, returned: "int *"):
+        """If no exception is raised, then returned is set to 0 for
+a yield, and 1 for a return.
+This is more efficient than the plain Send function."""
 
 class Bytes:
 
@@ -288,4 +287,4 @@ class FrameStack:
 
     def GetCode(depth: uintptr_t) -> Code: ...
 
-del abi, namespace, no_fail, function_pointer, no_monadic, shared
+del abi, namespace, no_fail, function_pointer, shared
