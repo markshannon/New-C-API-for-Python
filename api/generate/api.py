@@ -230,12 +230,12 @@ class Exception:
 
     def RaiseFromString(cls: Class, message: utf_string) -> Self:
         """Always fails. Returns, barring another error,
-        { PyRef PyRef_INVALID, new_exception }
+        will set *error to the newly created exception.
         """
 
     def RaiseFromValue(cls: Class, message) -> Self:
         """Always fails. Returns, barring another error,
-        { PyRef PyRef_INVALID, new_exception }
+        will set *error to the newly created exception.
         """
 
 @namespace
