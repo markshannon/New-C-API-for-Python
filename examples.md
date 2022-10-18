@@ -29,7 +29,7 @@ PyApi_Tuple_GetLength(PyTupleRef t)
 
 This function gets the name of a class object
 ```C
-int PyApi_Class_GetName(PyContext ctx, PyClassRef cls, PyStrRef *result);
+PyStrRef PyApi_Class_GetName(PyContext ctx, PyClassRef cls);
 ```
 
 And here is an implementation for CPython (most versions up to 3.11)
@@ -38,11 +38,11 @@ typedef struct _py_class_ref {
     PyTypeObject *pointer;
 } PyClassRef;
 
-int
-PyApi_Class_GetName(PyContext ctx, PyClassRef cls, PyStrRef *result)
+PyStrRef
+PyApi_Class_GetName(PyContext ctx, PyClassRef cls)
 {
     PyObject *name = PyUnicode_FromString(cls.pointer->tp_name);
-    return PyApi_Interop_FromUnicodeObject_C(name, result);
+    return PyApi_Interop_FromUnicodeObject_C(name);
 }
 ```
 
@@ -51,19 +51,18 @@ PyApi_Class_GetName(PyContext ctx, PyClassRef cls, PyStrRef *result)
 This function unboxes an integer, with possible overflow.
 ```C
 
-int PyApi_Number_UnboxAsInt(PyIntRef i, intptr_t *value)
+intptr_t PyApi_Number_UnboxAsInt(PyIntRef i, int* overflow)
 {
     PyObject *obj = i.pointer;
     assert (PyLong_check(obj));
 
     if (PyLong_WillOverflowSsize_t(obj)) {
-        *value = _PyLong_Sign(obj);
-        return OVERFLOW;
+        int sign = _PyLong_Sign(obj);
+        *overflow = sign;
+        return sign > 0 ? INTPTR_MAX : INTPTR_MIN;
     }
-    else {
-        *value = PyLong_AsSsize_t(obj);
-        return SUCCESS;
-    }
+    *overflow = 0;
+    return PyLong_AsSsize_t(obj);
 }
 ```
 
@@ -73,34 +72,25 @@ This function gets a value from a dictionary
 
 ```C
 
-typedef enum _py_lookup_kind {
-    ERROR = -1,
-    FOUND = 0,
-    MISSING = 1,
-} PyLookupKind;
-
-PyLookupKind PyApi_Dict_GetItem(PyContext ctx, PyDictRef d, PyRef key, PyRef *result)
+PyRef PyApi_Dict_GetItem(PyContext ctx, PyDictRef d, PyRef key, PyExceptionRef *error)
 {
     PyObject *dp = d.pointer;
     PyObject *kp = key.pointer;
     PyObject *res = _PyDict_GetItemWithError(PyObject *dp, PyObject *kp);
     if (res != NULL) {
         assert(!Py_ErrOccurred());
-        ref->pointer = res;
-        return SUCCESS;
+        return PyApi_Interop_FromObject_C(res);
     }
     if (Py_ErrOccurred()) {
         PyObject *exception = get_normalized_exception();
-        ref->pointer = exception;
-        return ERROR;
+        *error = PyApi_Interop_FromException(exception);
+        return PyRef_INVALID;
     }
-    *result = PyIgnorableRef(ctx);
-    return MISSING;
+    /* Special case -- failure. No result, but no exception */
+    *error = PyRef_NO_EXCEPTION;
+    return PyRef_INVALID;
 }
 ```
-
-`PyIgnorableRef()` should return a valid `PyRef` that can be safely ignored,
-but will not invalid the state of the VM if it is used a normal reference.
 
 ## Constructing API functions from ABI functions
 
@@ -108,12 +98,12 @@ but will not invalid the state of the VM if it is used a normal reference.
 
 For the ABI function
 ```
-int PyApi_Tuple_SetItem_BnC(PyContext ctx, PyTupleRef t, uintptr_t index, PyRef item);
+PyExceptionRef PyApi_Tuple_SetItem_BnC(PyContext ctx, PyTupleRef t, uintptr_t index, PyRef item);
 ```
 
 We can construct the API function that borrows the reference simply:
 ```
-inline int
+inline PyExceptionRef
 PyApi_Tuple_SetItem(PyContext ctx, PyTupleRef t, uintptr_t index, PyRef item)
 {
     PyRef arg2 = PyRef_Dup(ctx, item);
@@ -128,19 +118,19 @@ want to wrap them in a friendlier API that handles edge cases.
 
 For example,
 ```
-int PyApi_Tuple_FromNonEmptyArray_nC(PyContext ctx, uintptr_t len, PyRef *values, PyRef *result);
+PyTupleRef PyApi_Tuple_FromNonEmptyArray_nC(PyContext ctx, uintptr_t len, PyRef *values, PyExceptionRef *error);
 ```
 can be wrapped in a macro to give the nicer API:
 ```
-int PyApi_Tuple_FromFixedArray(ctx, array, result)
+PyTupleRef PyApi_Tuple_FromFixedArray(ctx, array, error)
 ```
 
 ```
-#define PyApi_Tuple_FromFixedArray(ctx, array, result) \
+#define PyApi_Tuple_FromFixedArray(ctx, array, error) \
     ((sizeof(array) == 0) ? \
-        (*result = PyApi_Tuple_Empty(ctx), SUCCESS) \
+        PyApi_Tuple_Empty(ctx)
     : \
-        PyApi_Tuple_FromNonEmptyArray(ctx, sizeof(array)/sizeof(PyRef), &array, result)
+        PyApi_Tuple_FromNonEmptyArray(ctx, sizeof(array)/sizeof(PyRef), &array, error)
     )
 ```
 Allowing it be used like this:
