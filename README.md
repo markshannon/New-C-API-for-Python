@@ -18,7 +18,7 @@ We cannot incrementally change the current API, as each change
 will cause breakage and backwards incompatibility issues, leaving
 extension modules constantly broken.
 
-Rather than change the existing C API is it better to create an entirely new API,
+Rather than change the existing C API it is better to create an entirely new API,
 and deprecate the old one. This allows extension authors to switch to the new API
 at a time of their choosing, rather than constantly scrambling to keep up.
 
