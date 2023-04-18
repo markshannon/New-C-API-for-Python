@@ -238,12 +238,12 @@ class Exception:
         will set *error to the newly created exception.
         """
 
-    @no_fail
-    def GetLatestException() -> Self:
-        """If the immediately previous API call failed,
-        then return the exception set by that exception.
-        Otherwise, return either an arbitrary exception
-        or PyRef_NO_EXCEPTION"""
+@no_fail
+def GetLatestException() -> Exception:
+    """If the immediately previous API call failed,
+    then return the exception set by that exception.
+    Otherwise, return either an arbitrary exception
+    or PyRef_NO_EXCEPTION"""
 
 @namespace
 class Call:

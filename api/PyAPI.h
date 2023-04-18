@@ -420,16 +420,16 @@ PyExceptionRef PyApi_Exception_RaiseFromString(PyContext ctx, PyClassRef cls, co
          */
 PyExceptionRef PyApi_Exception_RaiseFromValue(PyContext ctx, PyClassRef cls, PyRef message);
 
-/* If the immediately previous API call failed,
-        then return the exception set by that exception.
-        Otherwise, return either an arbitrary exception
-        or PyRef_NO_EXCEPTION */
-PyExceptionRef PyApi_Exception_GetLatestException(PyContext ctx);
-
 bool PyApi_IsAnException(PyRef ref);
 PyExceptionRef PyApi_Exception_UnsafeCast(PyRef ref);
 PyExceptionRef PyApi_Exception_DownCast(PyRef ref);
 PyRef PyApi_Exception_UpCast(PyExceptionRef ref);
+
+/* If the immediately previous API call failed,
+    then return the exception set by that exception.
+    Otherwise, return either an arbitrary exception
+    or PyRef_NO_EXCEPTION */
+PyExceptionRef PyApi_GetLatestException(PyContext ctx);
 
 
 /* Call */
