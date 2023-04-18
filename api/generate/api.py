@@ -67,12 +67,12 @@ builtin_base_exception = BaseException
 for name, cls in builtins.__dict__.items():
     # Maybe we don't want every last exception class,
     # but that's the simplest approach for now.
-    if isinstance(cls, type) and issubclass(cls, builtin_base_exception):
+    if isinstance(cls, type) and name[0] != "_":
         @no_fail
         @shared
         def f() -> Class: ...
         f.__name__ = name
-        globals()[name] = f
+        globals()["class_" + name] = f
 del name, cls, builtin_base_exception
 
 class Str:
@@ -165,7 +165,7 @@ class Object:
 
     def IsIter(obj) -> bool: ...
 
-    def IsAIter(obj) -> bool: ...
+    def IsAnIter(obj) -> bool: ...
 
 class Dict:
 
@@ -229,14 +229,21 @@ class Exception:
     def FromErrnoWithFilename(cls: Class, filename: utf_string) -> Self: ...
 
     def RaiseFromString(cls: Class, message: utf_string) -> Self:
-        """Always fails. Returns, barring another error,
+        """Always fails. Barring another error,
         will set *error to the newly created exception.
         """
 
     def RaiseFromValue(cls: Class, message) -> Self:
-        """Always fails. Returns, barring another error,
+        """Always fails. Barring another error,
         will set *error to the newly created exception.
         """
+
+    @no_fail
+    def GetLatestException() -> Self:
+        """If the immediately previous API call failed,
+        then return the exception set by that exception.
+        Otherwise, return either an arbitrary exception
+        or PyRef_NO_EXCEPTION"""
 
 @namespace
 class Call:

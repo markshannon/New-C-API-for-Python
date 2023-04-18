@@ -1,7 +1,7 @@
 
 from __future__ import annotations
 from types import FunctionType
-from .abi import is_namespace, Int, Self, Void, Size, uint8_t, no_result, cannot_fail, is_function_pointer
+from .abi import is_namespace, Int, Self, Void, Size, uint8_t, no_result, cannot_fail, is_function_pointer, is_shared
 
 from . import api
 
@@ -52,9 +52,8 @@ def generate_function_pointer(func):
     assert not cannot_fail(func)
     result_type = get_result_type(func)
     assert result_type is object
-    return_or_exception = [ "PyRef *result" ]
-    all_args = [ CONTEXT ] + flatten_args(arg_decls) + return_or_exception
-    print(f"typedef int (*{func_name})({', '.join(all_args)});\n")
+    all_args = [ CONTEXT ] + flatten_args(arg_decls)
+    print(f"typedef PyRef (*{func_name})({', '.join(all_args)});\n")
 
 
 def generate_api_func(namespace, func):
@@ -66,17 +65,19 @@ def generate_api_func(namespace, func):
     annotations = func.__annotations__
     arg_decls = [ get_arg_decl(name, namespace, annotations) for name in arg_names]
     return_type = get_result_type(func)
+    return_arg = None
+    if not cannot_fail(func):
+        if return_type is Void or return_type is bool:
+            return_type = int
+        if isinstance(cls, Int):
+            return_arg = return_type
+            return_type = int
     return_type = ctype_for_class(return_type, namespace)
-    if cannot_fail(func):
-        exception = []
-    elif return_type == "void":
-        return_type = "PyExceptionRef"
-        exception = []
-    else:
-        if return_type == "bool":
-            return_type = "int"
-        exception = [ "PyExceptionRef *exc" ]
-    all_args = [ CONTEXT ] + flatten_args(arg_decls) + exception
+    all_args = flatten_args(arg_decls)
+    if not is_shared(func):
+        all_args = [ CONTEXT ] + all_args
+    if return_arg is not None:
+        all_args.append(ctype_for_class(return_arg, namespace)+"*")
     if func.__doc__:
         print(f"/* {func.__doc__} */")
     print(f"{return_type} {func_name}({', '.join(all_args)});\n")
@@ -87,6 +88,9 @@ print("/* This file is generated from api.py by gen/__main__.py */\n")
 #Helpers
 print("PyRef PyRef_INVALID;")
 print("PyExceptionRef PyRef_NO_EXCEPTION;\n")
+
+print("PyRef Py_DupRef(PyRef ref);")
+print("PyRef Py_CloseRef(PyRef ref);")
 
 for name, obj in api.__dict__.items():
     if isinstance(obj, FunctionType):

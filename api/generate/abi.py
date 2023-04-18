@@ -51,7 +51,11 @@ def no_result(func):
 
 def shared(func):
     "Marker for things that returned shared references."
+    func._shared = True
     return func
+
+def is_shared(func):
+    return hasattr(func, "_shared")
 
 exports = (
     intptr_t, uintptr_t, uint8_t, int32_t, uint32_t, int64_t, uint64_t,
