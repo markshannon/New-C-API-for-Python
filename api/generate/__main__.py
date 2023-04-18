@@ -89,8 +89,8 @@ print("/* This file is generated from api.py by gen/__main__.py */\n")
 print("PyRef PyRef_INVALID;")
 print("PyExceptionRef PyRef_NO_EXCEPTION;\n")
 
-print("PyRef Py_DupRef(PyRef ref);")
-print("PyRef Py_CloseRef(PyRef ref);")
+print("PyRef PyRef_Dup(PyRef ref);")
+print("PyRef PyRef_Close(PyRef ref);")
 
 for name, obj in api.__dict__.items():
     if isinstance(obj, FunctionType):

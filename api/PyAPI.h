@@ -3,8 +3,8 @@
 PyRef PyRef_INVALID;
 PyExceptionRef PyRef_NO_EXCEPTION;
 
-PyRef Py_DupRef(PyRef ref);
-PyRef Py_CloseRef(PyRef ref);
+PyRef PyRef_Dup(PyRef ref);
+PyRef PyRef_Close(PyRef ref);
 
 /* Tuple */
 PyTupleRef PyApi_Tuple_Empty(PyContext ctx);
