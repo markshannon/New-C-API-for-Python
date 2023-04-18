@@ -22,6 +22,9 @@ For example `PyMemContext` is passed to destructor functions
 which prevents them from doing much more than freeing `PyRef`s
 and memory.
 
+The exception to this rule is the set of funtions that get references
+to per-process objects like `int` or `type`.
+
 ## Opaque, linear references
 
 The C-API will refer to Python objects through opaque references
@@ -48,41 +51,64 @@ The is a consequence of the "No invalid states" design principle.
 The legacy API allows inplace mutation of tuples, strings and other 
 immutable object. These will not be allowed in the new API.
 
-## All functions have an error "out" parameter, or return the error
+## All functions must clearly show if an error has occurred.
 
-### Functions that have results
-
-Many functions return a result, but may also raise an exception.
-To handle this, all such API functions should have an `error` out
-parameter, of the form `PyExceptionRef *error`.
-
-The error pointer should always be the final parameter.
+Whether an API function has produced an error must be clear
+from the return value, and only from the return value.
 
 API functions must obey the following rules:
 
-* If no valid result can be returned, the the result value should be `PyRef_INVALID`.
-* If the result is valid, then the memory pointer to by `error` should be untouched.
+* If no valid result can be returned, the the result value must be `PyRef_INVALID` or `-1`.
+* If the result is passed though a pointer, and the an error occurs, then the result value must be untouched.
+* If the result is valid, then an error must not have occured
+* If an error has occurred, then the result of immediately calling `PyApi_GetLatestException()` must be that error.
 
-Some functions can fail without an error. Failure should be represented by returning
-`PyRef_INVALID` and `*error = PyRef_NO_EXCEPTION`.
+Note that if an API function does not produce a result, the result of calling `PyApi_GetLatestException()`
+is undefined. It will be a legal, safe to use value; it will just be meaningless.
+
+### Functions that return references
+
+Many functions return a result, but may also raise an exception.
+To handle this case, a special value is used to indicate an error,
+`PyRef_INVALID`. If an error occurs, `PyRef_INVALID` must be returned.
+Conversely, if `PyRef_INVALID` is returned an error must have occurred.
+
+### Functions that return booleans.
+
+These functions will return `int`, with -1 indicating an error.
+0 and 1 indicate `False` and `True`, respectively.
+
+### Functions that return ints
+
+Functions that only return non-negative values can use -1 to indicate an error.
+Functions that can return negative values must return an error code,
+returning the real result via a pointer.
+
+### Fundtions that may fail without an error
+
+Some functions can fail without an error. Those functions must return an `int`
+error code and pass the result through a pointer.
+
+Success should be indicated by zero, and non-error failure stats by positive values.
 
 For example, to get a value from a dictionary might have the following API:
 
 ```C
-PyRef PyAPi_Dict_Get(PyContext ctx, PyDictRef dict, PyRef key, PyExceptionRef *value);
+int PyAPi_Dict_Get(PyContext ctx, PyDictRef dict, PyRef key, PyRef *result);
 ```
 
-If the result is `PyRef_INVALID` then the failure and error cases can be differentiated
-by testing `*error == PyRef_NO_EXCEPTION`.
+If the result is zero then the function has succeeded.
+Otherwise the error and failure cases can be distinguished by whether
+the result is negative.
 
 ### Functions without results
 
 Some functions, e.g. `PyApi_List_Append()` do not produce a result, but can raise.
-Those functions should return a `PyExceptionRef`.
+Those functions should return an `int`.
 ```C
-PyExceptionRef PyApi_List_Append(PyContext ctx, PyListRef list, PyRef item);
+int PyApi_List_Append(PyContext ctx, PyListRef list, PyRef item);
 ```
-Success is indicated by returning `PyRef_NO_EXCEPTION`.
+Success is indicated by returning a negative value, usually -1.
 
 ## Naming
 
