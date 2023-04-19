@@ -66,6 +66,7 @@ API functions must obey the following rules:
 Note that if an API function does not produce a result, the result of calling `PyApi_GetLatestException()`
 is undefined. It will be a legal, safe to use value; it will just be meaningless.
 
+
 ### Functions that return references
 
 Many functions return a result, but may also raise an exception.
@@ -109,6 +110,13 @@ Those functions should return an `int`.
 int PyApi_List_Append(PyContext ctx, PyListRef list, PyRef item);
 ```
 Success is indicated by returning a negative value, usually -1.
+
+### Cleanup after an error
+
+In order to allow the cleanup of references after an error,
+`PyRef_Dup`, `PyRef_Close` and `PyRef_Free` will not change the
+result of `PyApi_GetLatestException()`.
+
 
 ## Naming
 
