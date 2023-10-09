@@ -90,7 +90,7 @@ returning the real result via a pointer.
 Some functions can fail without an error. Those functions must return an `int`
 error code and pass the result through a pointer.
 
-Success should be indicated by zero, and non-error failure stats by positive values.
+Success should be indicated by zero, and non-error failures by positive values.
 
 For example, to get a value from a dictionary might have the following API:
 
