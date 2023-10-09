@@ -73,21 +73,21 @@ To help porting we will provide an [interopability API](./Interop.md)
 
 This is very much provisional at this point.
 
-* 2023 (3.12): New C API specification complete. Deprecation of unsafe parts of legacy C API.
-* 2024 (3.13): New C API implementation in CPython complete. 
-* 2025 (3.14): Removal of unsafe parts of legacy C API. Deprecation of legacy C API.
-* 2026 (3.15): Add warnings of parts of legacy C API with negative impact on performance.
-* 2027 (3.16): Add warnings on any use of legacy C API
-* 2028 (3.17): Remove parts of legacy C API with negative impact on performance.
-* 2029 (3.18)
+* 2024 (3.13): New C API specification complete. Deprecation of unsafe parts of legacy C API.
+* 2025 (3.14): New C API implementation in CPython complete.
+* 2026 (3.15): Removal of unsafe parts of legacy C API. Deprecation of legacy C API.
+* 2027 (3.16): Add warnings of parts of legacy C API with negative impact on performance.
+* 2028 (3.17): Add warnings on any use of legacy C API
+* 2029 (3.18): Remove parts of legacy C API with negative impact on performance.
 * 2030 (3.19)
-* 2031 (3.20/4.0): Removal of legacy C API
+* 2031 (3.20)
+* 2032 (3.21/4.0): Removal of legacy C API
 
 The removal of the legacy C API will happen in three stages:
 
-* 2025 (3.14): Removal of the unsafe parts of the API: parts of the API that return borrowed references, or mutate immutable objects.
-* 2028 (3.17): Removal of performance limiting parts of the API. For example, parts of the API that prevent improvements to internal data structures.
-* 2031 (3.20/4.0): Removal of the rest of the legacy C API.
+* 2026 (3.15): Removal of the unsafe parts of the API: parts of the API that return borrowed references, or mutate immutable objects.
+* 2029 (3.18): Removal of performance limiting parts of the API. For example, parts of the API that prevent improvements to internal data structures.
+* 2032 (3.21/4.0): Removal of the rest of the legacy C API.
 
 
 ## Documentation
