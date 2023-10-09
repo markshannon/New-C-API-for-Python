@@ -126,6 +126,8 @@ Prefix_NameSpace_Operation[_REF_CONSUMPTION][_VERSION]
 E.g.
 ```C
 PyTupleRef PyApi_Tuple_FromArray(PyContext ctx, uintptr_t len, PyRef *array, PyExceptionRef *error);
+
+PyTupleRef PyApi_Tuple_FromNonEmptyArray_nC_v2(PyContext ctx, uintptr_tlen, PyRef *array);
 ```
 
 ## Use C99 <stdint.h> types
@@ -194,11 +196,11 @@ differently, returning the empty tuple singleton.
 We handle this tension by providing an efficient, but difficult use
 ABI function:
 ```C
-PyTupleRef PyApi_Tuple_FromNonEmptyArray_nC(PyContext ctx, uintptr_tlen, PyRef *array, PyExceptionRef *error);
+PyTupleRef PyApi_Tuple_FromNonEmptyArray_nC(PyContext ctx, uintptr_tlen, PyRef *array);
 ```
 and the easier to use API function
 ```C
-PyTupleRef PyApi_Tuple_FromArray(PyContext ctx, uintptr_t len, PyRef *array, PyExceptionRef *error);
+PyTupleRef PyApi_Tuple_FromArray(PyContext ctx, uintptr_t len, PyRef *array);
 ```
 
 However, we can make this even easier to use by making a macro that 
