@@ -85,7 +85,7 @@ Functions that only return non-negative values can use -1 to indicate an error.
 Functions that can return negative values must return an error code,
 returning the real result via a pointer.
 
-### Fundtions that may fail without an error
+### Functions that may fail without an error
 
 Some functions can fail without an error. Those functions must return an `int`
 error code and pass the result through a pointer.
