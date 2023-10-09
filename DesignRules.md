@@ -122,7 +122,7 @@ result of `PyApi_GetLatestException()`.
 
 All API function and struct names should adhere to simple rules.
 For example, function names should take the form:
-Prefix_NameSpace_Operation[_REF_CONSUMPTION]
+Prefix_NameSpace_Operation[_REF_CONSUMPTION][_VERSION]
 E.g.
 ```C
 PyTupleRef PyApi_Tuple_FromArray(PyContext ctx, uintptr_t len, PyRef *array, PyExceptionRef *error);
