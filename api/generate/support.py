@@ -1,22 +1,46 @@
+PREFIX = "PyNI"
+REF = "PyRef"
+def TYPED_REF(t):
+    return f"Py{t}Ref"
+CONTEXT = "PyContext ctx"
+MISSING = REF + "_MISSING"
+ERROR = REF + "_ERROR"
 
-class Int:
+utf_string = "const UtfString"
+
+class Pointer:
+
+    def __init__(self, cls):
+        self.cls = cls
+
+    def __class_getitem__(self, item):
+        return Pointer(item)
+
+class CInt:
     def __init__(self, size, signed = True):
         self.size = size
         self.signed = signed
         prefix = "" if signed else "u"
         self.name = f"{prefix}int{size}_t"
 
-intptr_t = Int("ptr")
-uintptr_t = Int("ptr", False)
-uint8_t = Int(8, False)
-int32_t = Int(32)
-uint32_t = Int(32, False)
-int64_t = Int(64)
-uint64_t = Int(64, False)
+class Struct:
+    pass
 
-def abi(abi_string):
+int8_t = CInt(8)
+int16_t = CInt(16)
+int32_t = CInt(32)
+int64_t = CInt(64)
+intptr_t = CInt("ptr")
+
+uint8_t = CInt(8, False)
+uint16_t = CInt(16, False)
+uint32_t = CInt(32, False)
+uint64_t = CInt(64, False)
+uintptr_t = CInt("ptr", False)
+
+def preferred(ref_string):
     def deco(func):
-        func.abi_string = abi_string
+        func.ref_string = ref_string
         return func
     return deco
 
@@ -49,18 +73,8 @@ def no_result(func):
     ret_type = func.__annotations__.get("return", None)
     return ret_type is Void
 
-def shared(func):
-    "Marker for things that returned shared references."
-    func._shared = True
-    return func
-
-def is_shared(func):
-    return hasattr(func, "_shared")
-
-exports = (
-    intptr_t, uintptr_t, uint8_t, int32_t, uint32_t, int64_t, uint64_t,
-    abi, namespace, Self, Void, no_fail, function_pointer, shared
-)
-
-
-__all__ = [name for name in globals() if globals()[name] in exports]
+# To do -- Generate specializations
+def specialization(type):
+    def deco(func):
+        return func
+    return deco
